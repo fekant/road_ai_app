@@ -9,7 +9,7 @@ from tensorflow.keras.preprocessing.image import img_to_array
 import pandas as pd
 import cv2
 
-# 🔁 Download from Google Drive if missing
+# Download from Google Drive if missing
 @st.cache_resource
 def load_models():
     if not os.path.exists("yolov8s_gtsdb.pt"):
