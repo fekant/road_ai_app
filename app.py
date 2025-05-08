@@ -32,7 +32,9 @@ label_map_rdd = {
     "D10": "Alligator Crack",
     "D11": "Severe Crack",
     "D20": "White Line Degradation",
-    "D40": "Pothole"
+    "D40": "Pothole",
+    "D43": "Water-logging",
+    "D44": "Rough Surface"
 }
 
 label_map_gtsrb = {
