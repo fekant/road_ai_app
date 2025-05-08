@@ -1,0 +1,6 @@
+streamlit
+ultralytics
+tensorflow
+opencv-python
+pillow
+pandas
