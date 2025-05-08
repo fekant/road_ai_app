@@ -6,3 +6,4 @@ pillow
 pandas
 folium
 streamlit-folium
+gdown
