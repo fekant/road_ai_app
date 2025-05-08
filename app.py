@@ -15,9 +15,9 @@ def load_models():
     if not os.path.exists("yolov8s_gtsdb.pt"):
         gdown.download("https://drive.google.com/uc?id=141uXNq3hfhTBlxzGBZBzVMLrFs8cA5XX", "yolov8s_gtsdb.pt", quiet=False)
     if not os.path.exists("yolov8s_rdd.pt"):
-        gdown.download("https://drive.google.com/uc?id=141uXNq3hfhTBlxzGBZBzVMLrFs8cA5XX", "yolov8s_rdd.pt", quiet=False)
+        gdown.download("https://drive.google.com/file/d/1YOGQ1GU-gyt-zN6nqTdV8T_kD4WlN-qV", "yolov8s_rdd.pt", quiet=False)
     if not os.path.exists("gtsrb_cnn_model.h5"):
-        gdown.download("https://drive.google.com/uc?id=141uXNq3hfhTBlxzGBZBzVMLrFs8cA5XX", "gtsrb_cnn_model.h5", quiet=False)
+        gdown.download("https://drive.google.com/file/d/1sSa7cFrPZuPPL85LrQKJ8hpP5aypOKJI", "gtsrb_cnn_model.h5", quiet=False)
 
     model_signs = YOLO("yolov8s_gtsdb.pt")
     model_damage = YOLO("yolov8s_rdd.pt")
