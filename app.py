@@ -11,13 +11,6 @@ import cv2
 
 @st.cache_resource
 def load_models():
-    if not os.path.exists("yolov8s_gtsdb.pt"):
-        gdown.download("https://drive.google.com/uc?id=1RKOAtmWHSd3Bxb0-PzX6kyGsbpnPYPXT", "yolov8s_gtsdb.pt", quiet=False)
-    if not os.path.exists("yolov8s_rdd.pt"):
-        gdown.download("https://drive.google.com/uc?id=1YOGQ1GU-gyt-zN6nqTdV8T_kD4WlN-qV", "yolov8s_rdd.pt", quiet=False)
-    if not os.path.exists("gtsrb_cnn_model.h5"):
-        gdown.download("https://drive.google.com/uc?id=1sSa7cFrPZuPPL85LrQKJ8hpP5aypOKJI", "gtsrb_cnn_model.h5", quiet=False)
-
     model_signs = YOLO("yolov8s_gtsdb.pt")
     model_damage = YOLO("yolov8s_rdd.pt")
     classifier = load_model("gtsrb_cnn_model.h5")
