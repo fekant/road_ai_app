@@ -45,7 +45,7 @@ label_map_gtsrb = {
 
 st.title("🛣️ Road AI: Traffic Sign + Damage Detection")
 
-uploaded_files = st.file_uploader("Upload image(s)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload image(s)", type=["jpg", "jpeg", "png", "JPG", "PNG", "JPEG", "bmp", "tiff", "webp"], accept_multiple_files=True)
 detect_signs = st.checkbox("Detect Traffic Signs", value=True)
 detect_damage = st.checkbox("Detect Road Damage", value=True)
 
