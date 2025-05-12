@@ -49,9 +49,11 @@ uploaded_files = st.file_uploader("Upload image(s)", type=["jpg", "jpeg", "png",
 detect_signs = st.checkbox("Detect Traffic Signs", value=True)
 detect_damage = st.checkbox("Detect Road Damage", value=True)
 
+run_button = st.button("🚀 Run Detection")
+
 results_list = []
 
-if uploaded_files:
+if run_button and uploaded_files:
     for uploaded_file in uploaded_files:
         img = Image.open(uploaded_file).convert("RGB")
         img_np = np.array(img)
@@ -63,9 +65,9 @@ if uploaded_files:
             for box in signs_result.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 roi = img_np[y1:y2, x1:x2]
-                roi_resized = cv2.resize(roi, (48, 48))  # resize σε σωστό μέγεθος
-                arr = img_to_array(roi_resized) / 255.0  # κανονικοποίηση
-                arr = np.expand_dims(arr, axis=0)        # shape: (1, 48, 48, 3)
+                roi_resized = cv2.resize(roi, (48, 48))  # σωστό μέγεθος για το μοντέλο
+                arr = img_to_array(roi_resized) / 255.0
+                arr = np.expand_dims(arr, axis=0)
                 pred = classifier.predict(arr)[0]
                 class_id = np.argmax(pred)
                 label = label_map_gtsrb.get(class_id, str(class_id))
