@@ -1,7 +1,7 @@
 streamlit
 ultralytics
 tensorflow
-opencv-python-headless
+opencv-python
 pillow
 pandas
 folium
