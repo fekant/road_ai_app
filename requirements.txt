@@ -2,9 +2,5 @@ streamlit
 ultralytics
 tensorflow
 opencv-python
-pillow
-pandas
-folium
-streamlit-folium
-gdown
+Pillow
 numpy
