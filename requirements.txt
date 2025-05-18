@@ -1,10 +1,10 @@
 streamlit
 streamlit-folium
 folium
-ultralytics==8.1.22
+ultralytics==8.0.20
 exifread
 opencv-python-headless
-tensorflow==2.13.0
-Pillow
+tensorflow==2.16.1
 numpy
 pandas
+Pillow
