@@ -1,108 +1,94 @@
 import streamlit as st
-from PIL import Image
-import numpy as np
 import os
-import gdown
+from PIL import Image
+import exifread
+import numpy as np
+import cv2
+import pandas as pd
+import folium
+from streamlit_folium import st_folium
 from ultralytics import YOLO
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
-import pandas as pd
-import cv2
 
-@st.cache_resource
-def load_models():
-    model_signs = YOLO("yolov8s_gtsdb.pt")
-    model_damage = YOLO("yolov8s_rdd.pt")
-    classifier = load_model("gtsrb_cnn_model.h5")
-    return model_signs, model_damage, classifier
+# Φόρτωση μοντέλων
+yolo_damages = YOLO("yolov8s_rdd.pt")
+yolo_signs = YOLO("yolov8s_gtsdb.pt")
+cnn_model = load_model("gtsrb_cnn_model.h5")
 
-model_signs, model_damage, classifier = load_models()
+# Συνάρτηση για εξαγωγή GPS από EXIF
+def extract_gps_from_image(file):
+    file.seek(0)
+    tags = exifread.process_file(file, details=False)
+    try:
+        lat_ref = tags["GPS GPSLatitudeRef"].values
+        lon_ref = tags["GPS GPSLongitudeRef"].values
+        lat = tags["GPS GPSLatitude"].values
+        lon = tags["GPS GPSLongitude"].values
 
-label_map_rdd = {
-    "D00": "Longitudinal Crack",
-    "D01": "Transverse Crack",
-    "D10": "Alligator Crack",
-    "D11": "Severe Crack",
-    "D20": "White Line Degradation",
-    "D40": "Pothole",
-    "D43": "Water-logging",
-    "D44": "Rough Surface"
-}
+        def dms_to_dd(dms, ref):
+            d = float(dms[0].num) / dms[0].den
+            m = float(dms[1].num) / dms[1].den
+            s = float(dms[2].num) / dms[2].den
+            dd = d + m/60 + s/3600
+            if ref in ['S', 'W']:
+                dd = -dd
+            return dd
 
-label_map_gtsrb = {
-    i: name for i, name in enumerate([
-        "Speed limit (20km/h)", "Speed limit (30km/h)", "Speed limit (50km/h)", "Speed limit (60km/h)",
-        "Speed limit (70km/h)", "Speed limit (80km/h)", "End of speed limit (80km/h)", "Speed limit (100km/h)",
-        "Speed limit (120km/h)", "No passing", "No passing for vehicles over 3.5 tons", "Right-of-way at intersection",
-        "Priority road", "Yield", "Stop", "No vehicles", "Vehicles > 3.5 tons prohibited", "No entry", "General caution",
-        "Dangerous curve left", "Dangerous curve right", "Double curve", "Bumpy road", "Slippery road",
-        "Road narrows on right", "Road work", "Traffic signals", "Pedestrians", "Children crossing", "Bicycles crossing",
-        "Beware of ice/snow", "Wild animals crossing", "End of all speed and passing limits", "Turn right ahead",
-        "Turn left ahead", "Ahead only", "Go straight or right", "Go straight or left", "Keep right", "Keep left",
-        "Roundabout mandatory", "End of no passing", "End of no passing by vehicles > 3.5 tons"
-    ])
-}
+        return dms_to_dd(lat, lat_ref), dms_to_dd(lon, lon_ref)
+    except Exception:
+        return None, None
 
-st.title("🛣️ Road AI: Traffic Sign + Damage Detection")
+# Streamlit UI
+st.set_page_config(layout="wide")
+st.title("Road AI – Εντοπισμός Φθορών & Σημάτων με GPS")
 
-uploaded_files = st.file_uploader("Upload image(s)", type=["jpg", "jpeg", "png", "JPG", "PNG", "JPEG", "bmp", "tiff", "webp"], accept_multiple_files=True)
-detect_signs = st.checkbox("Detect Traffic Signs", value=True)
-detect_damage = st.checkbox("Detect Road Damage", value=True)
-confidence_threshold = st.slider("Minimum Confidence Threshold", 0.0, 1.0, 0.3, 0.05)
-run_button = st.button("🚀 Run Detection")
+uploaded_files = st.file_uploader("Ανέβασε εικόνες", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+mode = st.selectbox("Επιλογή Λειτουργίας", ["Detect Damages", "Detect Traffic Signs"])
+run_button = st.button("🚀 Εκκίνηση Ανάλυσης")
 
 results_list = []
 
 if run_button and uploaded_files:
-    with st.spinner("Running detection... please wait."):
-        for uploaded_file in uploaded_files:
-            img = Image.open(uploaded_file).convert("RGB")
-            img_np = np.array(img)
-            annotated = img_np.copy()
-            filename = uploaded_file.name
+    for uploaded_file in uploaded_files:
+        image = Image.open(uploaded_file).convert("RGB")
+        img_array = np.array(image)
+        filename = uploaded_file.name
+        lat, lon = extract_gps_from_image(uploaded_file)
 
-            if detect_signs:
-                signs_result = model_signs(img_np, save=False, conf=confidence_threshold)[0]
-                for box in signs_result.boxes:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    roi = img_np[y1:y2, x1:x2]
-                    roi_resized = cv2.resize(roi, (48, 48))
-                    arr = img_to_array(roi_resized) / 255.0
-                    arr = np.expand_dims(arr, axis=0)
-                    pred = classifier.predict(arr)[0]
-                    class_id = np.argmax(pred)
-                    label = label_map_gtsrb.get(class_id, str(class_id))
-                    conf = pred[class_id]
-                    if conf >= confidence_threshold:
-                        cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        cv2.putText(annotated, f"{label} {conf:.2f}", (x1, y1 - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                        results_list.append({
-                            "Filename": filename, "Type": "Sign", "Label": label,
-                            "Confidence": round(conf, 3), "Box": f"{x1},{y1},{x2},{y2}"
-                        })
+        if mode == "Detect Damages":
+            results = yolo_damages.predict(img_array)[0]
+        else:
+            results = yolo_signs.predict(img_array)[0]
 
-            if detect_damage:
-                damage_result = model_damage(img_np, save=False, conf=confidence_threshold)[0]
-                for box in damage_result.boxes:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    class_id = int(box.cls)
-                    conf = float(box.conf)
-                    if conf >= confidence_threshold:
-                        raw_label = model_damage.names[class_id]
-                        label = label_map_rdd.get(raw_label, raw_label)
-                        cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                        cv2.putText(annotated, f"{label} {conf:.2f}", (x1, y1 - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-                        results_list.append({
-                            "Filename": filename, "Type": "Damage", "Label": label,
-                            "Confidence": round(conf, 3), "Box": f"{x1},{y1},{x2},{y2}"
-                        })
+        for box in results.boxes:
+            cls = int(box.cls[0])
+            conf = float(box.conf[0])
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            label = results.names[cls]
 
-            st.image(annotated, caption=f"🔍 {filename}", use_column_width=True)
+            results_list.append({
+                "Filename": filename,
+                "Type": "Damage" if mode == "Detect Damages" else "Sign",
+                "Label": label,
+                "Confidence": round(conf, 3),
+                "Box": f"{x1},{y1},{x2},{y2}",
+                "Latitude": lat,
+                "Longitude": lon
+            })
 
-        df = pd.DataFrame(results_list)
-        st.subheader("📋 Detection Results")
-        st.dataframe(df, use_container_width=True)
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("Download Results as CSV", csv, "detection_results.csv", "text/csv")
+    df = pd.DataFrame(results_list)
+    st.dataframe(df)
+
+    if "Latitude" in df.columns and df["Latitude"].notnull().any():
+        st.subheader("🗺️ Χάρτης Εντοπισμών")
+        m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean()], zoom_start=14)
+
+        for _, row in df.dropna(subset=["Latitude", "Longitude"]).iterrows():
+            folium.Marker(
+                location=[row["Latitude"], row["Longitude"]],
+                popup=f"{row['Label']} ({row['Confidence']}) - {row['Filename']}",
+                icon=folium.Icon(color="red" if row["Type"] == "Damage" else "blue")
+            ).add_to(m)
+
+        st_folium(m, width=700)
