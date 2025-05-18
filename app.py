@@ -10,12 +10,14 @@ import folium
 from streamlit_folium import st_folium
 from ultralytics import YOLO
 from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
 
 # Φόρτωση μοντέλων
 yolo_damages = YOLO("yolov8s_rdd.pt")
 yolo_signs = YOLO("yolov8s_gtsdb.pt")
 cnn_model = load_model("gtsrb_cnn_model.h5")
+
+# Δημιουργία φακέλου για αποθήκευση αποτελεσμάτων
+os.makedirs("outputs", exist_ok=True)
 
 # Συνάρτηση για εξαγωγή GPS από EXIF
 def extract_gps_from_image(file_like):
@@ -59,16 +61,21 @@ if run_button and uploaded_files:
             filename = uploaded_file.name
             lat, lon = extract_gps_from_image(io.BytesIO(file_bytes))
 
-            if mode == "Detect Damages":
-                results = yolo_damages.predict(img_array)[0]
-            else:
-                results = yolo_signs.predict(img_array)[0]
+            # Ανίχνευση με YOLO
+            results = yolo_damages.predict(img_array)[0] if mode == "Detect Damages" else yolo_signs.predict(img_array)[0]
 
+            # Annotated εικόνα
+            annotated_img = img_array.copy()
             for box in results.boxes:
                 cls = int(box.cls[0])
                 conf = float(box.conf[0])
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 label = results.names[cls]
+
+                # σχεδίαση box
+                cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(annotated_img, f"{label} {conf:.2f}", (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
                 results_list.append({
                     "Filename": filename,
@@ -79,6 +86,11 @@ if run_button and uploaded_files:
                     "Latitude": lat,
                     "Longitude": lon
                 })
+
+            # Αποθήκευση annotated εικόνας
+            output_filename = os.path.join("outputs", f"annotated_{filename}")
+            Image.fromarray(annotated_img).save(output_filename)
+
         except Exception as e:
             st.error(f"❌ Σφάλμα κατά την ανάλυση της εικόνας {uploaded_file.name}: {e}")
             continue
@@ -87,6 +99,13 @@ if run_button and uploaded_files:
         df = pd.DataFrame(results_list)
         st.dataframe(df)
 
+        # Export CSV
+        csv_file = "outputs/detections.csv"
+        df.to_csv(csv_file, index=False)
+        with open(csv_file, "rb") as f:
+            st.download_button("📥 Κατέβασε CSV Αποτελεσμάτων", f, file_name="detections.csv")
+
+        # Χάρτης
         if "Latitude" in df.columns and df["Latitude"].notnull().any():
             st.subheader("🗺️ Χάρτης Εντοπισμών")
             m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean()], zoom_start=14)
