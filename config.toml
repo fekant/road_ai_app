@@ -1,0 +1,7 @@
+[server]
+headless = true
+runOnSave = false
+enableStaticServing = true
+
+[global]
+developmentMode = false
