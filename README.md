@@ -54,5 +54,5 @@ You can upload them to your Google Drive and download them inside `app.py`.
 
 ## 🙌 Credits
 
-Developed by [Your Name] as part of a traffic analysis and road maintenance project.
+Developed by Antonis Fekas as part of a traffic analysis and road maintenance project.
 
