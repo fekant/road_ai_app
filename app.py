@@ -80,11 +80,18 @@ def extract_gps_from_image(file_like):
 def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
     result = {}
     try:
-        # Save the uploaded file temporarily
+        # Save the uploaded file temporarily with explicit error handling
         file_path = os.path.join("outputs", uploaded_file.name)
-        with open(file_path, "wb") as f:
-            f.write(uploaded_file.getvalue())
-        
+        try:
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getvalue())
+            logging.info(f"Successfully saved original file to {file_path}")
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"File not found after saving: {file_path}")
+        except Exception as e:
+            logging.error(f"Failed to save file {uploaded_file.name}: {e}")
+            raise
+
         file_bytes = uploaded_file.getvalue()
         image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
         img_array = np.array(image)
@@ -145,7 +152,7 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
             }
 
         # Image.fromarray(annotated_img).save(result["Annotated_Path"])
-        logging.info(f"Saved annotated image for {filename}")
+        logging.info(f"Processed image saved (annotation skipped due to OpenCV issue)")
     except Exception as e:
         logging.error(f"Error processing {uploaded_file.name}: {e}")
         st.error(f"Σφάλμα κατά την επεξεργασία της εικόνας {filename}: {str(e)}")
@@ -208,7 +215,10 @@ if st.session_state.results_list:
     cols = st.columns(2)
     for result in st.session_state.results_list:
         with cols[0]:
-            st.image(Image.open(result["Filename"]), caption="Αρχική Εικόνα", use_column_width=True)
+            try:
+                st.image(Image.open(result["Filename"]), caption="Αρχική Εικόνα", use_column_width=True)
+            except FileNotFoundError as e:
+                st.error(f"Failed to load original image {result['Filename']}: {e}")
         with cols[1]:
             # st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα", use_column_width=True)
             st.write("Annotated image not available without OpenCV")
