@@ -17,6 +17,9 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 import json
 
+# Set page config as the FIRST Streamlit command
+st.set_page_config(layout="wide", page_title="Road AI", page_icon="🛣️")
+
 # Ρύθμιση logging
 logging.basicConfig(filename="app.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -133,7 +136,6 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
     return result
 
 # Streamlit UI
-st.set_page_config(layout="wide")
 st.title("Road AI – Εντοπισμός Φθορών & Σημάτων με GPS")
 
 # Προσαρμοσμένη θεματολογία
@@ -150,9 +152,7 @@ if 'results_list' not in st.session_state:
 if 'df' not in st.session_state:
     st.session_state.df = None
 if 'csv_file' not in st.session_state:
-    st.session_state.csv_file = None
-if 'annotated_images' not in st.session_state:
-    st.session_state.annotated_images = []
+    st.sessionологии
 
 # Φόρμα για είσοδο
 with st.form(key="analysis_form"):
