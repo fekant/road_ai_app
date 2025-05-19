@@ -178,8 +178,26 @@ st.title("Road AI – Εντοπισμός Φθορών & Σημάτων με GP
 # Προσαρμοσμένη θεματολογία
 st.markdown("""
     <style>
-    .main {background-color: #f0f2f6;}
-    .stButton>button {background-color: #4CAF50; color: white;}
+    .stApp {
+        background-color: #f0f2f6;
+        color: #333333;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        color: #2c3e50;
+    }
+    .stButton>button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+    }
+    .stButton>button:hover {
+        background-color: #45a049;
+    }
+    .stWarning, .stError {
+        color: #d32f2f;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -232,12 +250,12 @@ if st.session_state.results_list:
                 if not os.path.exists(result["Filename"]):
                     raise FileNotFoundError(f"Image file not found: {result['Filename']}")
                 image = Image.open(result["Filename"])
-                st.image(image, caption="Αρχική Εικόνα")  # Removed use_container_width
+                st.image(image, caption="Αρχική Εικόνα")
             except (FileNotFoundError, IOError) as e:
                 logging.error(f"Failed to load image {result['Filename']}: {str(e)}")
                 st.error(f"Failed to load original image {result['Filename']}: {str(e)}")
         with cols[1]:
-            # st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα", use_container_width=True)
+            # st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα")
             st.write("Annotated image not available without OpenCV")
         st.session_state.annotated_images.append(result["Annotated_Path"])
 
