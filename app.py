@@ -216,25 +216,4 @@ else:
     if run_button and uploaded_files:
         st.warning("Δεν εντοπίστηκαν αντικείμενα στις εικόνες που ανέβηκαν.")
 
-# Υποδειγματική κλήση xAI API (αν έχεις κλειδί)
-def call_xai_api(description):
-    # Αντικατέστησε με το δικό σου API key
-    api_key = "YOUR_XAI_API_KEY"
-    headers = {"Authorization": f"Bearer {api_key}"}
-    payload = {"query": f"Analyze road damage: {description}"}
-    try:
-        response = requests.post("https://api.x.ai/v1/analyze", json=payload, headers=headers)
-        return response.json()
-    except Exception as e:
-        logging.error(f"xAI API error: {e}")
-        return None
 
-if st.session_state.results_list:
-    st.subheader("🤖 xAI API Ανάλυση")
-    if st.button("Ανάλυση με xAI API"):
-        description = st.session_state.df.to_string()
-        result = call_xai_api(description)
-        if result:
-            st.write(result)
-        else:
-            st.error("Failed to get xAI API response")
