@@ -4,8 +4,12 @@ import io
 from PIL import Image
 import exifread
 import numpy as np
-import cv2  # Added debug print to confirm import
-print("OpenCV imported successfully, version:", cv2.__version__)
+try:
+    import cv2  # Added debug print to confirm import
+    print("OpenCV imported successfully, version:", cv2.__version__)
+except ImportError as e:
+    st.error("Failed to import OpenCV: Ensure 'opencv-python' is in requirements.txt and redeploy. Error: " + str(e))
+    st.stop()
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
@@ -17,6 +21,9 @@ import gc
 
 # Set page config as the FIRST Streamlit command
 st.set_page_config(layout="wide", page_title="Road AI", page_icon="🛣️")
+
+# Debug to confirm Streamlit is running
+print("Streamlit app initialized successfully")
 
 # Ρύθμιση logging
 logging.basicConfig(filename="app.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
