@@ -91,6 +91,7 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
         
         if not results.boxes:
             logging.warning(f"No detections for {filename} in mode {mode}")
+            st.warning(f"Δεν εντοπίστηκαν αντικείμενα στην εικόνα: {filename}")
             return None
 
         annotated_img = img_array.copy()
@@ -132,6 +133,7 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
         logging.info(f"Saved annotated image for {filename}")
     except Exception as e:
         logging.error(f"Error processing {uploaded_file.name}: {e}")
+        st.error(f"Σφάλμα κατά την επεξεργασία της εικόνας {filename}: {str(e)}")
         return None
     return result
 
@@ -152,7 +154,9 @@ if 'results_list' not in st.session_state:
 if 'df' not in st.session_state:
     st.session_state.df = None
 if 'csv_file' not in st.session_state:
-    st.sessionологии
+    st.session_state.csv_file = None
+if 'annotated_images' not in st.session_state:
+    st.session_state.annotated_images = []
 
 # Φόρμα για είσοδο
 with st.form(key="analysis_form"):
