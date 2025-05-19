@@ -13,9 +13,6 @@ from tensorflow.keras.models import load_model
 import torch
 import logging
 import gc
-from concurrent.futures import ThreadPoolExecutor
-import requests
-import json
 
 # Set page config as the FIRST Streamlit command
 st.set_page_config(layout="wide", page_title="Road AI", page_icon="🛣️")
@@ -87,8 +84,8 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
 
         # Ανίχνευση με YOLO
         results = yolo_damages.predict(img_array, conf=0.25)[0] if mode == "Detect Damages" else yolo_signs.predict(img_array, conf=0.25)[0]
-        logging.info(f"Processed {filename}: {len(results.boxes)} detections found")
-        
+        logging.info(f"Processed {filename}: {len(results.boxes)} detections found, classes: {results.names}")
+
         if not results.boxes:
             logging.warning(f"No detections for {filename} in mode {mode}")
             st.warning(f"Δεν εντοπίστηκαν αντικείμενα στην εικόνα: {filename}")
@@ -172,10 +169,10 @@ if run_button and uploaded_files:
 
     progress_bar = st.progress(0)
     total_files = len(uploaded_files)
-    with ThreadPoolExecutor() as executor:
-        results = list(executor.map(lambda f: process_image(f, mode, yolo_damages, yolo_signs, cnn_model), uploaded_files))
-    st.session_state.results_list = [r for r in results if r]
-    for i, _ in enumerate(uploaded_files):
+    for i, uploaded_file in enumerate(uploaded_files):
+        result = process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model)
+        if result:
+            st.session_state.results_list.append(result)
         progress_bar.progress((i + 1) / total_files)
     st.success(f"✅ Επεξεργάστηκαν {len(st.session_state.results_list)} εντοπισμοί!")
     gc.collect()
