@@ -28,8 +28,15 @@ print("Streamlit app initialized successfully")
 # Ρύθμιση logging
 logging.basicConfig(filename="app.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Allow Ultralytics DetectionModel in PyTorch safe globals
-torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
+# Conditionally add safe globals if available (PyTorch 2.2.0+)
+try:
+    if hasattr(torch.serialization, 'add_safe_globals'):
+        torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
+        logging.info("Added ultralytics.nn.tasks.DetectionModel to safe globals")
+    else:
+        logging.warning("torch.serialization.add_safe_globals not available; skipping registration")
+except AttributeError as e:
+    logging.warning(f"Failed to register safe globals: {e}")
 
 # Caching μοντέλων
 @st.cache_resource
@@ -233,7 +240,7 @@ if st.session_state.results_list:
         st.subheader("🗺️ Χάρτης Εντοπισμών")
         df = st.session_state.df.dropna(subset=["Latitude", "Longitude"])
         if not df.empty:
-            m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean()], zoom_start=14)
+            m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean"], zoom_start=14)
             for _, row in df.iterrows():
                 folium.Marker(
                     location=[row["Latitude"], row["Longitude"]],
