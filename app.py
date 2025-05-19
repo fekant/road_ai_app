@@ -80,6 +80,11 @@ def extract_gps_from_image(file_like):
 def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
     result = {}
     try:
+        # Save the uploaded file temporarily
+        file_path = os.path.join("outputs", uploaded_file.name)
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getvalue())
+        
         file_bytes = uploaded_file.getvalue()
         image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
         img_array = np.array(image)
@@ -128,7 +133,7 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
                     st.warning(f"Η ταξινόμηση CNN απέτυχε για την εικόνα {filename}: {str(e)}")
 
             result = {
-                "Filename": filename,
+                "Filename": file_path,  # Use the saved file path
                 "Type": "Damage" if mode == "Detect Damages" else "Sign",
                 "Label": label,
                 "CNN_Label": cnn_label,
