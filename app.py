@@ -196,4 +196,38 @@ if st.session_state.results_list:
     
     st.subheader("🔍 Φίλτρα Αποτελεσμάτων")
     confidence_threshold = st.slider("Ελάχιστη Εμπιστοσύνη", 0.0, 1.0, 0.5)
-    filtered_df = st.session_state.df[st.session
+    filtered_df = st.session_state.df[st.session_state.df["Confidence"] >= confidence_threshold]
+    st.dataframe(filtered_df)
+
+    st.subheader("📸 Επεξεργασμένες Εικόνες")
+    cols = st.columns(2)
+    for result in st.session_state.results_list:
+        with cols[0]:
+            st.image(Image.open(result["Filename"]), caption="Αρχική Εικόνα", use_column_width=True)
+        with cols[1]:
+            # st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα", use_column_width=True)
+            st.write("Annotated image not available without OpenCV")
+        st.session_state.annotated_images.append(result["Annotated_Path"])
+
+    st.session_state.csv_file = "outputs/detections.csv"
+    st.session_state.df.to_csv(st.session_state.csv_file, index=False)
+    with open(st.session_state.csv_file, "rb") as f:
+        st.download_button("📥 Κατέβασε CSV Αποτελεσμάτων", f, file_name="detections.csv")
+
+    if "Latitude" in st.session_state.df.columns and st.session_state.df["Latitude"].notnull().any():
+        st.subheader("🗺️ Χάρτης Εντοπισμών")
+        df = st.session_state.df.dropna(subset=["Latitude", "Longitude"])
+        if not df.empty:
+            m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean()], zoom_start=14)
+            for _, row in df.iterrows():
+                folium.Marker(
+                    location=[row["Latitude"], row["Longitude"]],
+                    popup=f"{row['Label']} ({row['Confidence']}) - {row['Filename']}",
+                    icon=folium.Icon(color="red" if row["Type"] == "Damage" else "blue")
+                ).add_to(m)
+            st_folium(m, width=700, key="folium_map")
+        else:
+            st.warning("No valid GPS coordinates available for mapping.")
+else:
+    if run_button and uploaded_files:
+        st.warning("Δεν εντοπίστηκαν αντικείμενα στις εικόνες που ανέβηκαν.")
