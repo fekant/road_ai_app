@@ -78,13 +78,18 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
         filename = uploaded_file.name
         lat, lon = extract_gps_from_image(io.BytesIO(file_bytes))
 
-        # Έλεγχος μεγέθους αρχείου
-        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        MAX_FILE_SIZE = 10 * 1024 * 1024
         if len(file_bytes) > MAX_FILE_SIZE:
             raise ValueError(f"File {filename} exceeds 10MB limit")
 
         # Ανίχνευση με YOLO
-        results = yolo_damages.predict(img_array)[0] if mode == "Detect Damages" else yolo_signs.predict(img_array)[0]
+        results = yolo_damages.predict(img_array, conf=0.25)[0] if mode == "Detect Damages" else yolo_signs.predict(img_array, conf=0.25)[0]
+        logging.info(f"Processed {filename}: {len(results.boxes)} detections found")
+        
+        if not results.boxes:
+            logging.warning(f"No detections for {filename} in mode {mode}")
+            return None
+
         annotated_img = img_array.copy()
         for box in results.boxes:
             cls = int(box.cls[0])
@@ -92,15 +97,16 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
             x1, y1, x2, y2 = map(int, box.xyxy[0])
             label = results.names[cls]
 
-            # Σχεδίαση box
             cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(annotated_img, f"{label} {conf:.2f}", (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
-            # Ενσωμάτωση CNN για σήματα
             cnn_label = None
             if mode == "Detect Traffic Signs":
                 roi = img_array[y1:y2, x1:x2]
+                if roi.size == 0:
+                    logging.warning(f"Empty ROI for {filename}")
+                    continue
                 roi_resized = cv2.resize(roi, (32, 32))
                 roi_normalized = roi_resized / 255.0
                 roi_input = np.expand_dims(roi_normalized, axis=0)
@@ -119,9 +125,8 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
                 "Annotated_Path": os.path.join("outputs", f"annotated_{filename}")
             }
 
-        # Αποθήκευση annotated εικόνας
         Image.fromarray(annotated_img).save(result["Annotated_Path"])
-        logging.info(f"Processed {filename}: {len(results.boxes)} detections")
+        logging.info(f"Saved annotated image for {filename}")
     except Exception as e:
         logging.error(f"Error processing {uploaded_file.name}: {e}")
         return None
@@ -169,19 +174,17 @@ if run_button and uploaded_files:
     for i, _ in enumerate(uploaded_files):
         progress_bar.progress((i + 1) / total_files)
     st.success(f"✅ Επεξεργάστηκαν {len(st.session_state.results_list)} εντοπισμοί!")
-    gc.collect()  # Διαχείριση μνήμης
+    gc.collect()
 
 # Εμφάνιση αποτελεσμάτων
 if st.session_state.results_list:
     st.session_state.df = pd.DataFrame(st.session_state.results_list)
     
-    # Φιλτράρισμα αποτελεσμάτων
     st.subheader("🔍 Φίλτρα Αποτελεσμάτων")
     confidence_threshold = st.slider("Ελάχιστη Εμπιστοσύνη", 0.0, 1.0, 0.5)
     filtered_df = st.session_state.df[st.session_state.df["Confidence"] >= confidence_threshold]
     st.dataframe(filtered_df)
 
-    # Εμφάνιση εικόνων
     st.subheader("📸 Επεξεργασμένες Εικόνες")
     cols = st.columns(2)
     for result in st.session_state.results_list:
@@ -191,13 +194,11 @@ if st.session_state.results_list:
             st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα", use_column_width=True)
         st.session_state.annotated_images.append(result["Annotated_Path"])
 
-    # Export CSV
     st.session_state.csv_file = "outputs/detections.csv"
     st.session_state.df.to_csv(st.session_state.csv_file, index=False)
     with open(st.session_state.csv_file, "rb") as f:
         st.download_button("📥 Κατέβασε CSV Αποτελεσμάτων", f, file_name="detections.csv")
 
-    # Χάρτης
     if "Latitude" in st.session_state.df.columns and st.session_state.df["Latitude"].notnull().any():
         st.subheader("🗺️ Χάρτης Εντοπισμών")
         df = st.session_state.df.dropna(subset=["Latitude", "Longitude"])
@@ -215,5 +216,3 @@ if st.session_state.results_list:
 else:
     if run_button and uploaded_files:
         st.warning("Δεν εντοπίστηκαν αντικείμενα στις εικόνες που ανέβηκαν.")
-
-
