@@ -5,6 +5,8 @@ from PIL import Image
 import exifread
 import numpy as np
 import logging
+from ultralytics import YOLO  # Added missing import
+from tensorflow.keras.models import load_model  # Added for CNN model
 
 # Set page config as the first Streamlit command
 st.set_page_config(layout="wide", page_title="Road AI Simplified", page_icon="🛣️")
