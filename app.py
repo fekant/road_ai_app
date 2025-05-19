@@ -102,17 +102,23 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
             cv2.putText(annotated_img, f"{label} {conf:.2f}", (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
+            # Απομόνωση της εκτέλεσης του CNN
             cnn_label = None
             if mode == "Detect Traffic Signs":
-                roi = img_array[y1:y2, x1:x2]
-                if roi.size == 0:
-                    logging.warning(f"Empty ROI for {filename}")
-                    continue
-                roi_resized = cv2.resize(roi, (32, 32))
-                roi_normalized = roi_resized / 255.0
-                roi_input = np.expand_dims(roi_normalized, axis=0)
-                prediction = cnn_model.predict(roi_input, verbose=0)
-                cnn_label = np.argmax(prediction, axis=1)[0]
+                try:
+                    roi = img_array[y1:y2, x1:x2]
+                    if roi.size == 0:
+                        logging.warning(f"Empty ROI for {filename}")
+                        continue
+                    roi_resized = cv2.resize(roi, (48, 48))  # Διόρθωση σε 48x48
+                    roi_normalized = roi_resized / 255.0
+                    roi_input = np.expand_dims(roi_normalized, axis=0)
+                    prediction = cnn_model.predict(roi_input, verbose=0)
+                    cnn_label = np.argmax(prediction, axis=1)[0]
+                    logging.info(f"CNN prediction for {filename}: class {cnn_label}")
+                except Exception as e:
+                    logging.error(f"CNN failed for {filename}: {e}")
+                    st.warning(f"Η ταξινόμηση CNN απέτυχε για την εικόνα {filename}: {str(e)}")
 
             result = {
                 "Filename": filename,
