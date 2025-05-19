@@ -1,7 +1,7 @@
 streamlit
 streamlit-folium
 folium
-ultralytics==8.0.20
+ultralytics
 exifread
 opencv-python-headless
 tensorflow==2.16.1
