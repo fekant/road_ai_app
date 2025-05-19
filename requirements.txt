@@ -7,4 +7,6 @@ opencv-python-headless
 tensorflow==2.16.1
 numpy
 pandas
-Pillow requests pytest
+Pillow 
+requests
+pytest
