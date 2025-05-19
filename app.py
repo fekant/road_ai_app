@@ -2,15 +2,15 @@ import streamlit as st
 import os
 import io
 import logging
-from PIL import Image
-import exifread
 try:
     import numpy as np
     logging.info("Numpy imported successfully, version: %s", np.__version__)
 except ImportError as e:
     logging.error("Failed to import numpy: %s", str(e))
-    st.error("Numpy is not available. Please ensure 'numpy' is in requirements.txt and redeploy.")
+    st.error("Numpy is not available. Please ensure 'numpy' is in requirements.txt, check build logs, and redeploy.")
     st.stop()
+from PIL import Image
+import exifread
 # try:
 #     import cv2  # Added debug print to confirm import
 #     print("OpenCV imported successfully, version:", cv2.__version__)
