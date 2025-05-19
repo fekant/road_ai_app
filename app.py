@@ -240,7 +240,7 @@ if st.session_state.results_list:
         st.subheader("🗺️ Χάρτης Εντοπισμών")
         df = st.session_state.df.dropna(subset=["Latitude", "Longitude"])
         if not df.empty:
-            m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean"], zoom_start=14)
+            m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean()], zoom_start=14)
             for _, row in df.iterrows():
                 folium.Marker(
                     location=[row["Latitude"], row["Longitude"]],
