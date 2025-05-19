@@ -77,7 +77,7 @@ def extract_gps_from_image(file_like):
         return None, None
 
 # Συνάρτηση επεξεργασίας εικόνας
-def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
+def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model, conf_threshold):
     result = {}
     try:
         # Save the uploaded file temporarily with explicit error handling
@@ -103,7 +103,7 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
             raise ValueError(f"File {filename} exceeds 10MB limit")
 
         # Ανίχνευση με YOLO
-        results = yolo_damages.predict(img_array, conf=0.25)[0] if mode == "Detect Damages" else yolo_signs.predict(img_array, conf=0.25)[0]
+        results = yolo_damages.predict(img_array, conf=conf_threshold)[0] if mode == "Detect Damages" else yolo_signs.predict(img_array, conf=conf_threshold)[0]
         logging.info(f"Processed {filename}: {len(results.boxes)} detections found, classes: {results.names}")
 
         if not results.boxes:
@@ -179,11 +179,14 @@ if 'csv_file' not in st.session_state:
     st.session_state.csv_file = None
 if 'annotated_images' not in st.session_state:
     st.session_state.annotated_images = []
+if 'conf_threshold' not in st.session_state:
+    st.session_state.conf_threshold = 0.25
 
 # Φόρμα για είσοδο
 with st.form(key="analysis_form"):
-    uploaded_files = st.file_uploader("Ανέβασε εικόνες", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Ανέβασε εικόνες", type=["jpg", "jpeg", png"], accept_multiple_files=True)
     mode = st.selectbox("Επιλογή Λειτουργίας", ["Detect Damages", "Detect Traffic Signs"])
+    st.session_state.conf_threshold = st.slider("Κατώφλι Εμπιστοσύνης", 0.0, 1.0, 0.25, 0.01)
     run_button = st.form_submit_button("🚀 Εκκίνηση Ανάλυσης")
 
 if run_button and uploaded_files:
@@ -195,7 +198,7 @@ if run_button and uploaded_files:
     progress_bar = st.progress(0)
     total_files = len(uploaded_files)
     for i, uploaded_file in enumerate(uploaded_files):
-        result = process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model)
+        result = process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model, st.session_state.conf_threshold)
         if result:
             st.session_state.results_list.append(result)
         progress_bar.progress((i + 1) / total_files)
@@ -216,11 +219,11 @@ if st.session_state.results_list:
     for result in st.session_state.results_list:
         with cols[0]:
             try:
-                st.image(Image.open(result["Filename"]), caption="Αρχική Εικόνα", use_column_width=True)
+                st.image(Image.open(result["Filename"]), caption="Αρχική Εικόνα", use_container_width=True)
             except FileNotFoundError as e:
                 st.error(f"Failed to load original image {result['Filename']}: {e}")
         with cols[1]:
-            # st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα", use_column_width=True)
+            # st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα", use_container_width=True)
             st.write("Annotated image not available without OpenCV")
         st.session_state.annotated_images.append(result["Annotated_Path"])
 
