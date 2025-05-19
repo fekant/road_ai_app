@@ -3,8 +3,6 @@ pillow
 exifread
 numpy
 pandas
-folium
-streamlit-folium
 ultralytics
 tensorflow
 torch
