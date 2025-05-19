@@ -232,7 +232,7 @@ if st.session_state.results_list:
                 if not os.path.exists(result["Filename"]):
                     raise FileNotFoundError(f"Image file not found: {result['Filename']}")
                 image = Image.open(result["Filename"])
-                st.image(image, caption="Αρχική Εικόνα", use_container_width=True)
+                st.image(image, caption="Αρχική Εικόνα")  # Removed use_container_width
             except (FileNotFoundError, IOError) as e:
                 logging.error(f"Failed to load image {result['Filename']}: {str(e)}")
                 st.error(f"Failed to load original image {result['Filename']}: {str(e)}")
