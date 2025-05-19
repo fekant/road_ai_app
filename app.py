@@ -15,7 +15,7 @@ import torch
 # Allow Ultralytics DetectionModel in PyTorch safe globals
 torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
 
-# Φόρτωση μοντέλων με έλεγχο σφαλμάτων
+# Φόρτωση μοντέλων
 try:
     yolo_damages = YOLO("yolov8s_rdd.pt")
     yolo_signs = YOLO("yolov8s_gtsdb.pt")
@@ -23,7 +23,6 @@ try:
 except Exception as e:
     st.error(f"Failed to load models: {e}")
     st.stop()
-
 
 # Δημιουργία φακέλου για αποθήκευση αποτελεσμάτων
 os.makedirs("outputs", exist_ok=True)
@@ -48,8 +47,17 @@ def extract_gps_from_image(file_like):
             return dd
 
         return dms_to_dd(lat, lat_ref), dms_to_dd(lon, lon_ref)
-    except Exception:
+    except Exception as e:
+        st.warning(f"No GPS data found: {e}")
         return None, None
+
+# Αρχικοποίηση session_state
+if 'results_list' not in st.session_state:
+    st.session_state.results_list = []
+if 'df' not in st.session_state:
+    st.session_state.df = None
+if 'csv_file' not in st.session_state:
+    st.session_state.csv_file = None
 
 # Streamlit UI
 st.set_page_config(layout="wide")
@@ -59,9 +67,12 @@ uploaded_files = st.file_uploader("Ανέβασε εικόνες", type=["jpg", 
 mode = st.selectbox("Επιλογή Λειτουργίας", ["Detect Damages", "Detect Traffic Signs"])
 run_button = st.button("🚀 Εκκίνηση Ανάλυσης")
 
-results_list = []
-
 if run_button and uploaded_files:
+    # Καθαρισμός προηγούμενων αποτελεσμάτων
+    st.session_state.results_list = []
+    st.session_state.df = None
+    st.session_state.csv_file = None
+
     for uploaded_file in uploaded_files:
         try:
             file_bytes = uploaded_file.getvalue()
@@ -81,12 +92,12 @@ if run_button and uploaded_files:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 label = results.names[cls]
 
-                # σχεδίαση box
+                # Σχεδίαση box
                 cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(annotated_img, f"{label} {conf:.2f}", (x1, y1 - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
-                results_list.append({
+                st.session_state.results_list.append({
                     "Filename": filename,
                     "Type": "Damage" if mode == "Detect Damages" else "Sign",
                     "Label": label,
@@ -101,31 +112,37 @@ if run_button and uploaded_files:
             Image.fromarray(annotated_img).save(output_filename)
 
         except Exception as e:
-            st.error(f"❌ Σφάλμα κατά την ανάλυση της εικόνας {uploaded_file.name}: {e}")
+            st.error(f"❌ Error processing {uploaded_file.name}: {e}")
+            import traceback
+            traceback.print_exc()
             continue
 
-    if results_list:
-        df = pd.DataFrame(results_list)
-        st.dataframe(df)
+# Εμφάνιση αποτελεσμάτων από session_state
+if st.session_state.results_list:
+    st.session_state.df = pd.DataFrame(st.session_state.results_list)
+    st.dataframe(st.session_state.df)
 
-        # Export CSV
-        csv_file = "outputs/detections.csv"
-        df.to_csv(csv_file, index=False)
-        with open(csv_file, "rb") as f:
-            st.download_button("📥 Κατέβασε CSV Αποτελεσμάτων", f, file_name="detections.csv")
+    # Export CSV
+    st.session_state.csv_file = "outputs/detections.csv"
+    st.session_state.df.to_csv(st.session_state.csv_file, index=False)
+    with open(st.session_state.csv_file, "rb") as f:
+        st.download_button("📥 Κατέβασε CSV Αποτελεσμάτων", f, file_name="detections.csv")
 
-        # Χάρτης
-        if "Latitude" in df.columns and df["Latitude"].notnull().any():
-            st.subheader("🗺️ Χάρτης Εντοπισμών")
+    # Χάρτης
+    if "Latitude" in st.session_state.df.columns and st.session_state.df["Latitude"].notnull().any():
+        st.subheader("🗺️ Χάρτης Εντοπισμών")
+        df = st.session_state.df.dropna(subset=["Latitude", "Longitude"])
+        if not df.empty:
             m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean()], zoom_start=14)
-
-            for _, row in df.dropna(subset=["Latitude", "Longitude"]).iterrows():
+            for _, row in df.iterrows():
                 folium.Marker(
                     location=[row["Latitude"], row["Longitude"]],
                     popup=f"{row['Label']} ({row['Confidence']}) - {row['Filename']}",
                     icon=folium.Icon(color="red" if row["Type"] == "Damage" else "blue")
                 ).add_to(m)
-
-            st_folium(m, width=700)
-    else:
+            st_folium(m, width=700, key="folium_map")
+        else:
+            st.warning("No valid GPS coordinates available for mapping.")
+else:
+    if run_button and uploaded_files:
         st.warning("Δεν εντοπίστηκαν αντικείμενα στις εικόνες που ανέβηκαν.")
