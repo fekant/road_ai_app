@@ -10,11 +10,20 @@ import folium
 from streamlit_folium import st_folium
 from ultralytics import YOLO
 from tensorflow.keras.models import load_model
+import torch
 
-# Φόρτωση μοντέλων
-yolo_damages = YOLO("yolov8s_rdd.pt")
-yolo_signs = YOLO("yolov8s_gtsdb.pt")
-cnn_model = load_model("gtsrb_cnn_model.h5")
+# Allow Ultralytics DetectionModel in PyTorch safe globals
+torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
+
+# Φόρτωση μοντέλων με έλεγχο σφαλμάτων
+try:
+    yolo_damages = YOLO("yolov8s_rdd.pt")
+    yolo_signs = YOLO("yolov8s_gtsdb.pt")
+    cnn_model = load_model("gtsrb_cnn_model.h5")  # Remove if unused
+except Exception as e:
+    st.error(f"Failed to load models: {e}")
+    st.stop()
+
 
 # Δημιουργία φακέλου για αποθήκευση αποτελεσμάτων
 os.makedirs("outputs", exist_ok=True)
