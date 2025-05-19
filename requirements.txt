@@ -1,12 +1,11 @@
-streamlit
-pillow
-exifread
+streamlit==1.35.0
+pillow==10.3.0
+exifread==3.0.0
 numpy==1.26.4
-pandas
-folium
-streamlit-folium
-ultralytics
-tensorflow==2.15.0
-torch==2.2.2+cpu
-opencv-python-headless
--f https://download.pytorch.org/whl/torch_stable.html
+pandas==2.2.2
+folium==0.16.0
+streamlit-folium==0.20.0
+ultralytics==8.2.0
+tensorflow==2.16.1
+torch==2.2.2
+opencv-python==4.9.0.80
