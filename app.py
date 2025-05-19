@@ -11,12 +11,12 @@ except ImportError as e:
     st.stop()
 from PIL import Image
 import exifread
-# try:
-#     import cv2  # Added debug print to confirm import
-#     print("OpenCV imported successfully, version:", cv2.__version__)
-# except ImportError as e:
-#     st.error("Failed to import OpenCV: Ensure 'opencv-python' is in requirements.txt and redeploy. Error: " + str(e))
-#     st.stop()
+try:
+    import cv2  # Enable OpenCV for annotations
+    logging.info("OpenCV imported successfully, version: %s", cv2.__version__)
+except ImportError as e:
+    logging.error("Failed to import OpenCV: %s", str(e))
+    st.warning("OpenCV not available; annotations will be disabled.")
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
@@ -58,6 +58,7 @@ try:
     yolo_damages = load_yolo_model("yolov8s_rdd.pt")
     yolo_signs = load_yolo_model("yolov8s_gtsdb.pt")
     cnn_model = load_cnn_model("gtsrb_cnn_model.h5")
+    logging.info("All models loaded successfully")
 except Exception as e:
     st.error(f"Failed to load models: {e}")
     st.stop()
@@ -117,7 +118,7 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
 
         # Ανίχνευση με YOLO
         results = yolo_damages.predict(img_array, conf=0.25)[0] if mode == "Detect Damages" else yolo_signs.predict(img_array, conf=0.25)[0]
-        logging.info(f"Processed {filename}: {len(results.boxes)} detections found, classes: {results.names}")
+        logging.info(f"Processed {filename} with {mode}: {len(results.boxes)} detections found, classes: {results.names}")
 
         if not results.boxes:
             logging.warning(f"No detections for {filename} in mode {mode}")
@@ -131,29 +132,30 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
             x1, y1, x2, y2 = map(int, box.xyxy[0])
             label = results.names[cls]
 
-            # cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            # cv2.putText(annotated_img, f"{label} {conf:.2f}", (x1, y1 - 10),
-            #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            if 'cv2' in globals():
+                cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(annotated_img, f"{label} {conf:.2f}", (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
             cnn_label = None
-            if mode == "Detect Traffic Signs":
+            if mode == "Detect Traffic Signs" and 'cv2' in globals():
                 try:
                     roi = img_array[y1:y2, x1:x2]
                     if roi.size == 0:
                         logging.warning(f"Empty ROI for {filename}")
                         continue
-                    # roi_resized = cv2.resize(roi, (48, 48))  # Corrected to 48x48
-                    # roi_normalized = roi_resized / 255.0
-                    # roi_input = np.expand_dims(roi_normalized, axis=0)
-                    # prediction = cnn_model.predict(roi_input, verbose=0)
-                    # cnn_label = np.argmax(prediction, axis=1)[0]
+                    roi_resized = cv2.resize(roi, (48, 48))  # Size expected by GTSRB CNN
+                    roi_normalized = roi_resized / 255.0
+                    roi_input = np.expand_dims(roi_normalized, axis=0)
+                    prediction = cnn_model.predict(roi_input, verbose=0)
+                    cnn_label = np.argmax(prediction, axis=1)[0]
                     logging.info(f"CNN prediction for {filename}: class {cnn_label}")
                 except Exception as e:
                     logging.error(f"CNN failed for {filename}: {e}")
                     st.warning(f"Η ταξινόμηση CNN απέτυχε για την εικόνα {filename}: {str(e)}")
 
             result = {
-                "Filename": file_path,  # Use the saved file path
+                "Filename": file_path,
                 "Type": "Damage" if mode == "Detect Damages" else "Sign",
                 "Label": label,
                 "CNN_Label": cnn_label,
@@ -164,8 +166,11 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
                 "Annotated_Path": os.path.join("outputs", f"annotated_{filename}")
             }
 
-        # Image.fromarray(annotated_img).save(result["Annotated_Path"])
-        logging.info(f"Processed image saved (annotation skipped due to OpenCV issue)")
+        if 'cv2' in globals():
+            Image.fromarray(annotated_img).save(result["Annotated_Path"])
+            logging.info(f"Annotated image saved to {result['Annotated_Path']}")
+        else:
+            logging.info("Annotation skipped due to missing OpenCV")
     except Exception as e:
         logging.error(f"Error processing {uploaded_file.name}: {e}")
         st.error(f"Σφάλμα κατά την επεξεργασία της εικόνας {filename}: {str(e)}")
@@ -255,8 +260,10 @@ if st.session_state.results_list:
                 logging.error(f"Failed to load image {result['Filename']}: {str(e)}")
                 st.error(f"Failed to load original image {result['Filename']}: {str(e)}")
         with cols[1]:
-            # st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα")
-            st.write("Annotated image not available without OpenCV")
+            if os.path.exists(result["Annotated_Path"]):
+                st.image(result["Annotated_Path"], caption="Επεξεργασμένη Εικόνα")
+            else:
+                st.write("Annotated image not available")
         st.session_state.annotated_images.append(result["Annotated_Path"])
 
     st.session_state.csv_file = "outputs/detections.csv"
