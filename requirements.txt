@@ -3,7 +3,9 @@ pillow
 exifread
 numpy
 pandas
+folium
+streamlit-folium
 ultralytics
 tensorflow
-torch
+torch==2.2.2
 opencv-python
