@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import io
+import logging
 from PIL import Image
 import exifread
 try:
@@ -22,7 +23,6 @@ from streamlit_folium import st_folium
 from ultralytics import YOLO
 from tensorflow.keras.models import load_model
 import torch
-import logging
 import gc
 
 # Set page config as the FIRST Streamlit command
