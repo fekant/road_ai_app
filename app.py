@@ -4,7 +4,8 @@ import io
 from PIL import Image
 import exifread
 import numpy as np
-import cv2
+import cv2  # Added debug print to confirm import
+print("OpenCV imported successfully, version:", cv2.__version__)
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
@@ -110,7 +111,7 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
                     if roi.size == 0:
                         logging.warning(f"Empty ROI for {filename}")
                         continue
-                    roi_resized = cv2.resize(roi, (48, 48))  # Διόρθωση σε 48x48
+                    roi_resized = cv2.resize(roi, (48, 48))  # Corrected to 48x48
                     roi_normalized = roi_resized / 255.0
                     roi_input = np.expand_dims(roi_normalized, axis=0)
                     prediction = cnn_model.predict(roi_input, verbose=0)
