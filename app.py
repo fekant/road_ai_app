@@ -3,7 +3,13 @@ import os
 import io
 from PIL import Image
 import exifread
-import numpy as np
+try:
+    import numpy as np
+    logging.info("Numpy imported successfully, version: %s", np.__version__)
+except ImportError as e:
+    logging.error("Failed to import numpy: %s", str(e))
+    st.error("Numpy is not available. Please ensure 'numpy' is in requirements.txt and redeploy.")
+    st.stop()
 # try:
 #     import cv2  # Added debug print to confirm import
 #     print("OpenCV imported successfully, version:", cv2.__version__)
