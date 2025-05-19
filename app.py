@@ -4,12 +4,12 @@ import io
 from PIL import Image
 import exifread
 import numpy as np
-try:
-    import cv2  # Added debug print to confirm import
-    print("OpenCV imported successfully, version:", cv2.__version__)
-except ImportError as e:
-    st.error("Failed to import OpenCV: Ensure 'opencv-python' is in requirements.txt and redeploy. Error: " + str(e))
-    st.stop()
+# try:
+#     import cv2  # Added debug print to confirm import
+#     print("OpenCV imported successfully, version:", cv2.__version__)
+# except ImportError as e:
+#     st.error("Failed to import OpenCV: Ensure 'opencv-python' is in requirements.txt and redeploy. Error: " + str(e))
+#     st.stop()
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
@@ -106,11 +106,10 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
             x1, y1, x2, y2 = map(int, box.xyxy[0])
             label = results.names[cls]
 
-            cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(annotated_img, f"{label} {conf:.2f}", (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            # cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            # cv2.putText(annotated_img, f"{label} {conf:.2f}", (x1, y1 - 10),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
-            # Απομόνωση της εκτέλεσης του CNN
             cnn_label = None
             if mode == "Detect Traffic Signs":
                 try:
@@ -118,11 +117,11 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
                     if roi.size == 0:
                         logging.warning(f"Empty ROI for {filename}")
                         continue
-                    roi_resized = cv2.resize(roi, (48, 48))  # Corrected to 48x48
-                    roi_normalized = roi_resized / 255.0
-                    roi_input = np.expand_dims(roi_normalized, axis=0)
-                    prediction = cnn_model.predict(roi_input, verbose=0)
-                    cnn_label = np.argmax(prediction, axis=1)[0]
+                    # roi_resized = cv2.resize(roi, (48, 48))  # Corrected to 48x48
+                    # roi_normalized = roi_resized / 255.0
+                    # roi_input = np.expand_dims(roi_normalized, axis=0)
+                    # prediction = cnn_model.predict(roi_input, verbose=0)
+                    # cnn_label = np.argmax(prediction, axis=1)[0]
                     logging.info(f"CNN prediction for {filename}: class {cnn_label}")
                 except Exception as e:
                     logging.error(f"CNN failed for {filename}: {e}")
@@ -140,7 +139,7 @@ def process_image(uploaded_file, mode, yolo_damages, yolo_signs, cnn_model):
                 "Annotated_Path": os.path.join("outputs", f"annotated_{filename}")
             }
 
-        Image.fromarray(annotated_img).save(result["Annotated_Path"])
+        # Image.fromarray(annotated_img).save(result["Annotated_Path"])
         logging.info(f"Saved annotated image for {filename}")
     except Exception as e:
         logging.error(f"Error processing {uploaded_file.name}: {e}")
@@ -197,37 +196,4 @@ if st.session_state.results_list:
     
     st.subheader("🔍 Φίλτρα Αποτελεσμάτων")
     confidence_threshold = st.slider("Ελάχιστη Εμπιστοσύνη", 0.0, 1.0, 0.5)
-    filtered_df = st.session_state.df[st.session_state.df["Confidence"] >= confidence_threshold]
-    st.dataframe(filtered_df)
-
-    st.subheader("📸 Επεξεργασμένες Εικόνες")
-    cols = st.columns(2)
-    for result in st.session_state.results_list:
-        with cols[0]:
-            st.image(Image.open(result["Filename"]), caption="Αρχική Εικόνα", use_column_width=True)
-        with cols[1]:
-            st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα", use_column_width=True)
-        st.session_state.annotated_images.append(result["Annotated_Path"])
-
-    st.session_state.csv_file = "outputs/detections.csv"
-    st.session_state.df.to_csv(st.session_state.csv_file, index=False)
-    with open(st.session_state.csv_file, "rb") as f:
-        st.download_button("📥 Κατέβασε CSV Αποτελεσμάτων", f, file_name="detections.csv")
-
-    if "Latitude" in st.session_state.df.columns and st.session_state.df["Latitude"].notnull().any():
-        st.subheader("🗺️ Χάρτης Εντοπισμών")
-        df = st.session_state.df.dropna(subset=["Latitude", "Longitude"])
-        if not df.empty:
-            m = folium.Map(location=[df["Latitude"].mean(), df["Longitude"].mean()], zoom_start=14)
-            for _, row in df.iterrows():
-                folium.Marker(
-                    location=[row["Latitude"], row["Longitude"]],
-                    popup=f"{row['Label']} ({row['Confidence']}) - {row['Filename']}",
-                    icon=folium.Icon(color="red" if row["Type"] == "Damage" else "blue")
-                ).add_to(m)
-            st_folium(m, width=700, key="folium_map")
-        else:
-            st.warning("No valid GPS coordinates available for mapping.")
-else:
-    if run_button and uploaded_files:
-        st.warning("Δεν εντοπίστηκαν αντικείμενα στις εικόνες που ανέβηκαν.")
+    filtered_df = st.session_state.df[st.session
