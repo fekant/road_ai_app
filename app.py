@@ -229,9 +229,13 @@ if st.session_state.results_list:
     for result in st.session_state.results_list:
         with cols[0]:
             try:
-                st.image(Image.open(result["Filename"]), caption="Αρχική Εικόνα", use_container_width=True)
-            except FileNotFoundError as e:
-                st.error(f"Failed to load original image {result['Filename']}: {e}")
+                if not os.path.exists(result["Filename"]):
+                    raise FileNotFoundError(f"Image file not found: {result['Filename']}")
+                image = Image.open(result["Filename"])
+                st.image(image, caption="Αρχική Εικόνα", use_container_width=True)
+            except (FileNotFoundError, IOError) as e:
+                logging.error(f"Failed to load image {result['Filename']}: {str(e)}")
+                st.error(f"Failed to load original image {result['Filename']}: {str(e)}")
         with cols[1]:
             # st.image(Image.open(result["Annotated_Path"]), caption="Επεξεργασμένη Εικόνα", use_container_width=True)
             st.write("Annotated image not available without OpenCV")
